@@ -133,7 +133,8 @@ void s7poll::displayMsg(string type) {
 			" -h         - wyswietla pomoc\n" <<
 			"-------------------------------------------------------\n" <<
 			" -hex       - wyswietla dane w systemie HEX\n" <<
-			" -int       - wyswietla dane jako liczby calkowite\n" <<
+			" -int8      - wyswietla dane jako liczby calkowite int8\n" <<
+			" -uint16    - wyswietla dane jako liczby calkowite uint16\n" <<
 			" -bin       - wyswietla dane w systemie binarnym\n" <<
 			" -float     - wyswietlna dane jako liczby zmiennoprzecinkowe\n"
 			"+-----------------------------------------------------+\n";
@@ -199,6 +200,7 @@ int main(int argc, char* argv[]) {
 	int paramSlot = DEFAULT_SLOT;
 	int plcStatus = PLC_ON;
 	bool typeFloat = false;
+	bool typeUInt16 = false;
 
 	for (size_t i = 1; i < args.size(); i++) {
 		if (args[i] == "-db") {
@@ -228,9 +230,21 @@ int main(int argc, char* argv[]) {
 		else if (args[i] == "-float") {
 			typeFloat = true;
 		}
+        else if (args[i] == "-uint16") {
+            typeUInt16 = true;
+        }
 	}
 
-	(typeFloat == true) ? arrSize = Start + (End * 4) : arrSize = Start + End;
+	//(typeFloat == true) ? arrSize = Start + (End * 4) : arrSize = Start + End;
+    if(typeFloat == true) {
+        arrSize = Start + (End * 4);
+    }
+    else if(typeUInt16 == true) {
+        arrSize = Start + (End * 2);
+    }
+    else {
+        arrSize = Start + End;
+    }
 
 	char tab[arrSize];
 
@@ -240,7 +254,17 @@ int main(int argc, char* argv[]) {
 		if (CliConnect(paramRack, paramSlot)) {
 			while (!stop) {
 
-				(typeFloat == true) ? Client->DBRead(DB, Start, End * 4, tab) : Client->DBRead(DB, Start, End, tab);
+				//(typeFloat == true) ? Client->DBRead(DB, Start, End * 4, tab) : Client->DBRead(DB, Start, End, tab);
+                if(typeFloat == true) {
+                    Client->DBRead(DB, Start, End * 4, tab);
+                }
+                else if(typeUInt16 == true) {
+                    Client->DBRead(DB, Start, End * 2, tab);
+                }
+                else {
+                    Client->DBRead(DB, Start, End, tab);
+                }
+
 
 				plcStatus = Client->PlcStatus();
 
@@ -256,7 +280,7 @@ int main(int argc, char* argv[]) {
 				for (size_t i = 1; i < args.size(); i++) {
 
 					for (int j = 0; j < End; j++) {
-						if (args[i] == "-int") {
+						if (args[i] == "-int8") {
 							cout << "[" << (j + Start) << "]: " << (unsigned int)tab[j] << "\n";
 						}
 						else if (args[i] == "-hex") {
@@ -274,6 +298,15 @@ int main(int argc, char* argv[]) {
 
 							cout << "[" << last << " - " << last + 3 << "]: " << f << "\n";
 							last = last + 4;
+						}
+						else if (args[i] == "-uint16") {
+							buf[0] = tab[x++];
+							buf[1] = tab[x++];
+
+							uint16_t v = *(uint16_t*)&buf;
+
+							cout << "[" << last << " - " << last + 1 << "]: " << v << "\n";
+							last = last + 2;
 						}
 						else if (args[i] == "-bin") {
 							cout << "[" << (j + Start) << "]: " << bitset < 16 >(tab[j]) << "\n";
